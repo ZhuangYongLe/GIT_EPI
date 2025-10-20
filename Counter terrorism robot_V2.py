@@ -534,35 +534,34 @@ try:
                 color_thresholds[5] = white_threshold
             continue
 
-        # 姿态调整 - 颜色触发模式
+        # 姿态调整 
 
         img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
-        blobs_yellow = img1.find_blobs([yellow_threshold])
-        blobs_gray = img1.find_blobs([gray_threshold])
+        # 使用配置的颜色阈值进行分割，允许以后切换颜色
+        blobs_yellw = img1.find_blobs([yellow_threshold])
+        blobs_graw = img1.find_blobs([gray_threshold])
 
-        if blobs_yellow and blobs_gray:
-            max_blob_yellow = find_max(blobs_yellow)  # 返回最大的色块
-            max_blob_gray = find_max(blobs_gray)  # 返回最大的色块
+        if blobs_color1 and blobs_color2:
+            b1 = find_max(blobs_yellw)
+            b2 = find_max(blobs_graw)
 
             # 当两个色块都足够大时触发姿态调整
-            if max_blob_yellow and max_blob_gray and max_blob_yellow.pixels() > 10000 and max_blob_gray.pixels() > 10000:
-                img1.draw_cross(max_blob_yellow.cx(), max_blob_yellow.cy(), color=(255, 255, 0), size=20)
-                img1.draw_cross(max_blob_gray.cx(), max_blob_gray.cy(), color=(128, 128, 128), size=20)
+            if b1 and b2 and b1.pixels() > 10000 and b2.pixels() > 10000:
+                
+                cy_avg = (b1.cy() + b2.cy()) // 2
 
-                My = (max_blob_yellow.cy() + max_blob_gray.cy()) // 2
-                high_byte_y, low_byte_y = split_coordinates(My)
+                img1.draw_cross(b1.cx(), b1.cy(), color=(255, 255, 0), size=20)
+                img1.draw_cross(b2.cx(), b2.cy(), color=(128, 128, 128), size=20)
 
-                # 发送姿态调整指令 通过调节4这个数字可以控制精度）
-                if abs(My - 240) < 4: #调整到位
-                    img1.draw_line(max_blob_yellow.cx(), max_blob_yellow.cy(),
-                                  max_blob_gray.cx(), max_blob_gray.cy(), color=(0, 255, 0))
-                    MA = bytearray([0x05, high_byte_y, low_byte_y, 0x00, 0x00, 0x00, 0x00, 0x6B])
-                    uart.write(MA)
-                else:#调整不到位
-                    img1.draw_line(max_blob_yellow.cx(), max_blob_yellow.cy(),
-                                  max_blob_gray.cx(), max_blob_gray.cy(), color=(255, 0, 0))
-                    MA = bytearray([0x05, high_byte_y, low_byte_y, 0x01, 0x00, 0x00, 0x00, 0x6B])
-                    uart.write(MA)
+                # 绿线表示在位，红线表示需要调整
+                in_place = abs(cy_avg - 240) <= 4
+                img1.draw_line(b1.cx(), b1.cy(), b2.cx(), b2.cy(), color=(0, 255, 0) if in_place else (255, 0, 0))
+
+                # 只发送y均值和状态
+                high_y, low_y = split_coordinates(cy_avg)
+                status = 0 if in_place else 1
+                MA = bytearray([0x05, high_y, low_y, status, 0x00, 0x00, 0x00, 0x6B])
+                uart.write(MA)
 
         # 串口数据接收处理
         uart_flag = b''  # 默认无指令
