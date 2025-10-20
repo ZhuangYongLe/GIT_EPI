@@ -690,8 +690,8 @@ try:
                                            r_min=20, r_max=50, r_step=2)
                 if circles:
                     min_circle = find_min_circle(circles)  # 找到最小的圆
-                    img1.draw_circle(min_circle.x() - min_circle.r() + min_circle.r(),
-                                    min_circle.y() - min_circle.r() + min_circle.r(), min_circle.r(), color=(250, 0, 0))
+                    img1.draw_circle(min_circle.x() ,
+                                    min_circle.y() , min_circle.r(), color=(250, 0, 0))
                     img1.draw_cross(min_circle.x(), min_circle.y(), color=(250, 0, 0))
                     center_x = min_circle.x()
                     center_y = min_circle.y()
@@ -718,8 +718,8 @@ try:
 
                 if circles:
                     min_circle = find_min_circle(circles)  # 找到最小的圆
-                    img1.draw_circle(min_circle.x() - min_circle.r() + min_circle.r(),
-                                    min_circle.y() - min_circle.r() + min_circle.r(), min_circle.r(), color=(250, 0, 0))
+                    img1.draw_circle(min_circle.x() ,
+                                    min_circle.y() , min_circle.r(), color=(250, 0, 0))
                     img1.draw_cross(min_circle.x(), min_circle.y(), color=(250, 0, 0))
                     center_x = min_circle.x()
                     center_y = min_circle.y()
@@ -745,8 +745,8 @@ try:
 
                 if circles:
                     min_circle = find_min_circle(circles)  # 找到最小的圆
-                    img1.draw_circle(min_circle.x() - min_circle.r() + min_circle.r(),
-                                    min_circle.y() - min_circle.r() + min_circle.r(), min_circle.r(), color=(250, 0, 0))
+                    img1.draw_circle(min_circle.x() ,
+                                    min_circle.y() , min_circle.r(), color=(250, 0, 0))
                     img1.draw_cross(min_circle.x(), min_circle.y(), color=(250, 0, 0))
                     center_x = min_circle.x()
                     center_y = min_circle.y()
