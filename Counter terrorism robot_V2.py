@@ -464,8 +464,8 @@ try:
         # 重置摄像头sensor1并配置参数
     sensor1 = Sensor(id=1)
     sensor1.reset()
-    sensor1.set_framesize(width=800,  height=480, chn=CAM_CHN_ID_1)
-    sensor1.set_pixformat(Sensor.RGB565, chn=CAM_CHN_ID_1)
+    sensor1.set_framesize(width=640,  height=480, chn=CAM_CHN_ID_1)
+    sensor1.set_pixformat(Sensor.LT9611, chn=CAM_CHN_ID_1)
     sensor1.set_hmirror(False)
     sensor1.set_vflip(False)
     if DISPLAY_MODE == "LCD":
@@ -860,7 +860,7 @@ try:
                                 uart.write(MA)
 
         # 显示捕获的图像，中心对齐，居中显示
-        Display.show_image(img1 if 'img1' in locals() else img0, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
+        Display.show_image(img1)
         # 短暂延时，避免cpu占用过高
         time.sleep_ms(100)
 
