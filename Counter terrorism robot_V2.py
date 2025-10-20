@@ -13,7 +13,7 @@ fpioa.set_function(50, FPIOA.UART3_TXD)
 fpioa.set_function(51, FPIOA.UART3_RXD)
 fpioa.set_function(53, FPIOA.GPIO53)
 
-# 串口配置
+# 串口配置.
 uart = UART(UART.UART3, baudrate=115200, bits=UART.EIGHTBITS, parity=UART.PARITY_NONE, stop=UART.STOPBITS_ONE)
 # 按钮配置
 button = Pin(53, Pin.IN, Pin.PULL_DOWN)  # 使用下拉电阻
