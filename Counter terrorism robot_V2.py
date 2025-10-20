@@ -23,7 +23,7 @@ button_last_state = 0  # 上次按键状态
 img0 = None  # 图像变量
 img1 = None
 
-# 形状识别相关全局变量
+# 形状识别相关全局变量】
 solidity_sum = 0
 density_sum = 0
 roundness_sum = 0
