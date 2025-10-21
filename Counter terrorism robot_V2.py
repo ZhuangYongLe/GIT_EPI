@@ -471,6 +471,36 @@ def adjust_posture(img, yellow_threshold, gray_threshold):
             MA = bytearray([0x05, high_y, low_y, status, 0x00, 0x00, 0x00, 0x6B])
             uart.write(MA)
 
+def detect_return_area(img):
+    """检测正方形粉红色返回区并返回其中点坐标"""
+    
+    
+    # 先做色块识别
+    blobs = img.find_blobs([pink_threshold])
+    if blobs:
+        # 找最大色块
+        max_blob = find_max(blobs)
+        if max_blob and max_blob.pixels() > 1000:
+            # 边缘检测（Canny等，假设img有edge方法，否则略过）
+            try:
+                edge_img = img.edge(threshold=50)
+                img.draw_image(edge_img, 0, 0)
+            except Exception:
+                pass
+            # 画矩形和中心点
+            img.draw_rectangle(max_blob.rect(), color=(255, 0, 255), thickness=3)
+            cx = max_blob.cx()
+            cy = max_blob.cy()
+            img.draw_cross(cx, cy, color=(255, 0, 255), size=20)
+            # 串口发送坐标
+            high_x, low_x = split_coordinates(cx)
+            high_y, low_y = split_coordinates(cy)
+            MA = bytearray([0x06, high_x, low_x, high_y, low_y, 0x00, 0x00, 0x6B])
+            uart.write(MA)
+            print(f"返回区中心: ({cx}, {cy})")
+            return cx, cy
+    return None
+
 try:
     # 显示初始化
     Display.init(Display.ST7701, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, to_ide=True)
@@ -831,6 +861,19 @@ try:
                                     [0x04, high_byte_x, low_byte_x, high_byte_y, low_byte_y, 0x00, 0x00, 0x6B])
                                 uart.write(MA)
 
+        # 返回区（正方形粉红色区域）
+        elif uart_flag == b'\x05\x00\x00\x00\x00\x00\x00\x00':
+            while True:
+                img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
+                if check_for_new_command():
+                    break
+                detect_return_area(img1)
+                Display.show_image(img1, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
+
+        # 显示捕获的图像，中心对齐，居中显示
+        Display.show_image(img1)
+        # 短暂延时，避免cpu占用过高
+        time.sleep_ms(100)
 
 except KeyboardInterrupt as e:
     print("用户终止：", e)  # 捕获键盘中断异常

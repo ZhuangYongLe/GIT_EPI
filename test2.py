@@ -100,15 +100,14 @@ def process_blobs(img, threshold):
             img.draw_rectangle(max_blob.rect())
             img.draw_cross(max_blob.cx(), max_blob.cy())
             adjust_x = max_blob.cx()
-            high_byte_x, low_byte_x = split_coordinates(adjust_x)
-            MA_adjust = bytearray([0x02, 0x01, high_byte_x, low_byte_x, 0x01, 0x00, 0x00, 0x6B])
-            uart.write(MA_adjust)
-            if abs(adjust_x - 300) < 10:
-                result = detect_center(img, threshold)
-                if result:
-                    x, y = result
-                    print(f"圆心坐标: ({x}, {y})")
-                    MA = bytearray([0x02, 0x01, high_byte_x, low_byte_x, 0x02, 0x00, 0x00, 0x6B])
+
+
+
+            result = detect_center(img, threshold)
+            if result:
+                x, y = result
+                print(f"圆心坐标: ({x}, {y})")
+
             return True
     return False
 
@@ -152,7 +151,7 @@ try:
         if result:
             x, y = result
             print(f"圆心坐标: ({x}, {y})")
-            MA = bytearray([0x02, 0x01, high_byte_x, low_byte_x, 0x02, 0x00, 0x00, 0x6B])
+
         Display.show_image(img1)
 
 except KeyboardInterrupt as e:
