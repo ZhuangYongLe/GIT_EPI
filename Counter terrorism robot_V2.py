@@ -536,9 +536,8 @@ try:
                 white_threshold = (L_MIN, L_MAX, A_MIN, A_MAX, B_MIN, B_MAX)
                 color_thresholds[5] = white_threshold
             continue
-
+        Display.show_image(img0, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
         # 姿态调整 
-
         img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
         # 使用配置的颜色阈值进行分割，允许以后切换颜色
         blobs_yellw = img1.find_blobs([yellow_threshold])
@@ -736,9 +735,7 @@ try:
                 Display.show_image(img1, x=int((DISPLAY_WIDTH - picture_width) / 2),
                                    y=int((DISPLAY_HEIGHT - picture_height) / 2))
 
-                # 显示捕获的图像，中心对齐，居中显示
-                Display.show_image(img1, x=int((DISPLAY_WIDTH - picture_width) / 2),
-                                   y=int((DISPLAY_HEIGHT - picture_height) / 2))
+                
 
         # 救援区
         elif (uart_flag == b'\x04\x01\x00\x00\x00\x00\x00\x00') or (uart_flag == b'\x04\x02\x00\x00\x00\x00\x00\x00') or (

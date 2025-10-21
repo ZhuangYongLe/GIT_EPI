@@ -148,7 +148,11 @@ try:
         os.exitpoint()
         img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
         target_threshold = green_threshold
-        process_blobs(img1, target_threshold)
+        result = detect_center(img, threshold)
+        if result:
+            x, y = result
+            print(f"圆心坐标: ({x}, {y})")
+            MA = bytearray([0x02, 0x01, high_byte_x, low_byte_x, 0x02, 0x00, 0x00, 0x6B])
         Display.show_image(img1)
 
 except KeyboardInterrupt as e:
