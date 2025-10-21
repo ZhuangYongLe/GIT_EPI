@@ -485,11 +485,12 @@ try:
         # 重置摄像头sensor1并配置参数
     sensor1 = Sensor(id=1)
     sensor1.reset()
-    sensor1.set_framesize(width=640,  height=480, chn=CAM_CHN_ID_1)
+    sensor1.set_framesize(width=600,  height=480, chn=CAM_CHN_ID_1)
     sensor1.set_pixformat(Sensor.RGB565, chn=CAM_CHN_ID_1)
     sensor1.set_hmirror(False)
     sensor1.set_vflip(False)
-
+    if DISPLAY_MODE == "LCD":
+        Display.init(Display.ST7701, width=800, height=480, to_ide=True)
     # 初始化媒体管理器
     MediaManager.init()
 
@@ -551,10 +552,10 @@ try:
                 white_threshold = (L_MIN, L_MAX, A_MIN, A_MAX, B_MIN, B_MAX)
                 color_thresholds[5] = white_threshold
             continue
-        Display.show_image(img0, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
+       
         # 姿态调整 
-        img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
-        adjust_posture(img1, yellow_threshold, gray_threshold)
+        #img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
+        #adjust_posture(img1, yellow_threshold, gray_threshold)
         
         # 串口数据接收处理
         uart_flag = b''  # 默认无指令
@@ -677,7 +678,7 @@ try:
                 if check_for_new_command():
                     break
                 target_threshold = red_threshold
-                result = detect_center(img, threshold)
+                result = detect_center(img1, target_threshold)
                 if result:
                     x, y = result
                     print(f"圆心坐标: ({x}, {y})")
@@ -696,7 +697,7 @@ try:
                 if check_for_new_command():
                     break
                 target_threshold = green_threshold
-                result = detect_center(img, threshold)
+                result = detect_center(img1, target_threshold)
                 if result:
                     x, y = result
                     print(f"圆心坐标: ({x}, {y})")
@@ -714,7 +715,7 @@ try:
                 if check_for_new_command():
                     break
                 target_threshold = blue_threshold
-                result = detect_center(img, threshold)
+                result = detect_center(img1, target_threshold)
                 if result:
                     x, y = result
                     print(f"圆心坐标: ({x}, {y})")
@@ -840,7 +841,7 @@ except BaseException as e:
 finally:
     # 清理资源
     Display.deinit()
- 
+    Display.deinit()
     os.exitpoint(os.EXITPOINT_ENABLE_SLEEP)  # 启用睡眠模式的退出点,
     time.sleep_ms(100)  # 延迟100毫秒
     MediaManager.deinit()
