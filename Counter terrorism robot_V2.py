@@ -831,10 +831,6 @@ try:
                                     [0x04, high_byte_x, low_byte_x, high_byte_y, low_byte_y, 0x00, 0x00, 0x6B])
                                 uart.write(MA)
 
-        # 显示捕获的图像，中心对齐，居中显示
-        Display.show_image(img1)
-        # 短暂延时，避免cpu占用过高
-        time.sleep_ms(100)
 
 except KeyboardInterrupt as e:
     print("用户终止：", e)  # 捕获键盘中断异常
