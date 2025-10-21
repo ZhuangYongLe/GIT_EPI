@@ -474,6 +474,9 @@ def adjust_posture(img, yellow_threshold, gray_threshold):
 try:
     # 显示初始化
     Display.init(Display.ST7701, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, to_ide=True)
+    if DISPLAY_MODE == "LCD":
+        Display.init(Display.LT9611, width=640,  height=480, to_ide=True)
+
     #定义id号
     sensor0 = Sensor(id=0)
     sensor0.reset()
@@ -552,10 +555,10 @@ try:
                 color_thresholds[5] = white_threshold
             continue
         Display.show_image(img0, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
-        # 姿态调整 
+        # 姿态调整
         img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
         adjust_posture(img1, yellow_threshold, gray_threshold)
-        
+
         # 串口数据接收处理
         uart_flag = b''  # 默认无指令
         if uart.any():
@@ -727,7 +730,7 @@ try:
                 Display.show_image(img1, x=int((DISPLAY_WIDTH - picture_width) / 2),
                                    y=int((DISPLAY_HEIGHT - picture_height) / 2))
 
-                
+
 
         # 救援区
         elif (uart_flag == b'\x04\x01\x00\x00\x00\x00\x00\x00') or (uart_flag == b'\x04\x02\x00\x00\x00\x00\x00\x00') or (
@@ -840,7 +843,7 @@ except BaseException as e:
 finally:
     # 清理资源
     Display.deinit()
- 
+
     os.exitpoint(os.EXITPOINT_ENABLE_SLEEP)  # 启用睡眠模式的退出点,
     time.sleep_ms(100)  # 延迟100毫秒
     MediaManager.deinit()
