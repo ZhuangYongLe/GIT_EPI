@@ -240,14 +240,17 @@ def find_max(blobs):
 """
                     识别圆环函数（反恐区）
 """
-def find_min_circle(circles):
-    min_size = 10000
-    min_circle = None
-    for circle in circles:
-        if circle.r() < min_size:
-            min_circle = circle
-            min_size = circle.r()
-    return min_circle
+def detect_center(img, target_threshold):
+    """检测图像中的圆,返回圆心坐标或None"""
+    mask = img.binary([target_threshold])
+    circles = mask.find_circles(threshold=6000, x_margin=10, y_margin=18, r_margin=10,
+                                r_min=18, r_max=40, r_step=2)
+    if circles:
+        best_circle = min(circles, key=lambda c: c.r())
+        img.draw_circle(best_circle.x(), best_circle.y(), best_circle.r(), color=(255,0,0))
+        img.draw_cross(best_circle.x(), best_circle.y(), color=(255,0,0))
+        return best_circle.x(), best_circle.y()
+    return None
 """
                     形状识别
 """
@@ -541,13 +544,12 @@ try:
         blobs_yellw = img1.find_blobs([yellow_threshold])
         blobs_graw = img1.find_blobs([gray_threshold])
 
-        if blobs_color1 and blobs_color2:
+        if blobs_yellw and blobs_graw:
             b1 = find_max(blobs_yellw)
             b2 = find_max(blobs_graw)
 
             # 当两个色块都足够大时触发姿态调整
             if b1 and b2 and b1.pixels() > 10000 and b2.pixels() > 10000:
-                
                 cy_avg = (b1.cy() + b2.cy()) // 2
 
                 img1.draw_cross(b1.cx(), b1.cy(), color=(255, 255, 0), size=20)
@@ -683,22 +685,14 @@ try:
                 img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
                 if check_for_new_command():
                     break
-                img1 = img1.binary([(red_threshold)]).gaussian(3)
-
-                circles = img1.find_circles(threshold=5000, x_margin=20, y_margin=20, r_margin=20,
-                                           r_min=20, r_max=50, r_step=2)
-                if circles:
-                    min_circle = find_min_circle(circles)  # 找到最小的圆
-                    img1.draw_circle(min_circle.x() ,
-                                    min_circle.y() , min_circle.r(), color=(250, 0, 0))
-                    img1.draw_cross(min_circle.x(), min_circle.y(), color=(250, 0, 0))
-                    center_x = min_circle.x()
-                    center_y = min_circle.y()
-                    print(min_circle.r())
-                    # 使用独立函数拆分坐标为高低字节
+                target_threshold = red_threshold
+                result = detect_center(img, threshold)
+                if result:
+                    x, y = result
+                    print(f"圆心坐标: ({x}, {y})")
                     high_byte_x, low_byte_x = split_coordinates(center_x)
                     high_byte_y, low_byte_y = split_coordinates(center_y)
-                    MA = bytearray([0x03, high_byte_x, low_byte_x, high_byte_y, low_byte_y, 0x00, 0x00, 0x6B])
+                    MA = bytearray([0x02, 0x01, high_byte_x, low_byte_x,high_byte_y, low_byte_y, 0x00, 0x6B])
                     uart.write(MA)
 
                 # 显示捕获的图像，中心对齐，居中显示
@@ -710,23 +704,14 @@ try:
                 img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
                 if check_for_new_command():
                     break
-                img1 = img1.binary([(green_threshold)]).gaussian(3)
-
-                circles = img1.find_circles(threshold=5000, x_margin=20, y_margin=20, r_margin=20,
-                                           r_min=20, r_max=50, r_step=2)
-
-                if circles:
-                    min_circle = find_min_circle(circles)  # 找到最小的圆
-                    img1.draw_circle(min_circle.x() ,
-                                    min_circle.y() , min_circle.r(), color=(250, 0, 0))
-                    img1.draw_cross(min_circle.x(), min_circle.y(), color=(250, 0, 0))
-                    center_x = min_circle.x()
-                    center_y = min_circle.y()
-                    print(min_circle.r())
-                    # 使用独立函数拆分坐标为高低字节
+                target_threshold = green_threshold
+                result = detect_center(img, threshold)
+                if result:
+                    x, y = result
+                    print(f"圆心坐标: ({x}, {y})")
                     high_byte_x, low_byte_x = split_coordinates(center_x)
                     high_byte_y, low_byte_y = split_coordinates(center_y)
-                    MA = bytearray([0x03, high_byte_x, low_byte_x, high_byte_y, low_byte_y, 0x00, 0x00, 0x6B])
+                    MA = bytearray([0x02, 0x02, high_byte_x, low_byte_x,high_byte_y, low_byte_y, 0x00, 0x6B])
                     uart.write(MA)
 
                 # 显示捕获的图像，中心对齐，居中显示
@@ -737,24 +722,20 @@ try:
                 img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
                 if check_for_new_command():
                     break
-                img1 = img1.binary([(blue_threshold)]).gaussian(3)
-
-                circles = img1.find_circles(threshold=5000, x_margin=20, y_margin=20, r_margin=20,
-                                           r_min=20, r_max=50, r_step=2)
-
-                if circles:
-                    min_circle = find_min_circle(circles)  # 找到最小的圆
-                    img1.draw_circle(min_circle.x() ,
-                                    min_circle.y() , min_circle.r(), color=(250, 0, 0))
-                    img1.draw_cross(min_circle.x(), min_circle.y(), color=(250, 0, 0))
-                    center_x = min_circle.x()
-                    center_y = min_circle.y()
-                    print(min_circle.r())
-                    # 使用独立函数拆分坐标为高低字节
+                target_threshold = blue_threshold
+                result = detect_center(img, threshold)
+                if result:
+                    x, y = result
+                    print(f"圆心坐标: ({x}, {y})")
                     high_byte_x, low_byte_x = split_coordinates(center_x)
                     high_byte_y, low_byte_y = split_coordinates(center_y)
-                    MA = bytearray([0x03, high_byte_x, low_byte_x, high_byte_y, low_byte_y, 0x00, 0x00, 0x6B])
+                    MA = bytearray([0x02, 0x03, high_byte_x, low_byte_x,high_byte_y, low_byte_y, 0x00, 0x6B])
                     uart.write(MA)
+
+                # 显示捕获的图像，中心对齐，居中显示
+                Display.show_image(img1, x=int((DISPLAY_WIDTH - picture_width) / 2),
+                                   y=int((DISPLAY_HEIGHT - picture_height) / 2))
+
                 # 显示捕获的图像，中心对齐，居中显示
                 Display.show_image(img1, x=int((DISPLAY_WIDTH - picture_width) / 2),
                                    y=int((DISPLAY_HEIGHT - picture_height) / 2))
@@ -869,6 +850,7 @@ except BaseException as e:
     print(f"异常：{e}")  # 捕获其他异常
 finally:
     # 清理资源
+    Display.deinit()
     Display.deinit()
     os.exitpoint(os.EXITPOINT_ENABLE_SLEEP)  # 启用睡眠模式的退出点,
     time.sleep_ms(100)  # 延迟100毫秒
