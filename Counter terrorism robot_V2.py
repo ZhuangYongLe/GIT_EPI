@@ -102,17 +102,18 @@ white_threshold = (89, 100, -13, 10, -14, 16)  # 白色阈值
 red_threshold = (40, 8, 8, 50, 11, 42)  # 红色阈值
 green_threshold = (76, 21, -46, -21, 12, 40)  # 绿色阈值
 blue_threshold = (0, 50, -20, 20, -60, -10)  # 蓝色阈值
-
+pink_threshold = (40, 80, 10, 60, 0, 60)  # 粉红色阈值
 # 添加颜色选择变量和颜色列表
 current_color_index = 0
-color_names = ["red", "green", "blue", "yellow", "gray", "white"]
+color_names = ["red", "green", "blue", "yellow", "gray", "white","pink"]
 color_thresholds = [
     red_threshold,
     green_threshold,
     blue_threshold,
     yellow_threshold,
     gray_threshold,
-    white_threshold
+    white_threshold,
+    pink_threshold
 ]
 current_color = color_names[current_color_index]
 save_success_message = ""  # 保存成功提示消息
@@ -124,7 +125,7 @@ THRESHOLDS_FILE = "/sdcard/color_thresholds.json"
 # 文件操作函数
 # 保存所有颜色阈值到文件
 def save_thresholds_to_sd():
-    global save_success_message, save_message_timer, red_threshold, green_threshold, blue_threshold, yellow_threshold, gray_threshold, white_threshold, color_thresholds
+    global save_success_message, save_message_timer, red_threshold, green_threshold, blue_threshold, yellow_threshold, gray_threshold, white_threshold, color_thresholds,pink_threshold
     try:
         # 首先确保全局阈值变量与color_thresholds数组同步
         red_threshold = color_thresholds[0]
@@ -133,7 +134,7 @@ def save_thresholds_to_sd():
         yellow_threshold = color_thresholds[3]
         gray_threshold = color_thresholds[4]
         white_threshold = color_thresholds[5]
-
+        pink_threshold = color_thresholds[6]
         # 准备保存的数据
         thresholds_data = {
             "red": red_threshold,
@@ -141,7 +142,9 @@ def save_thresholds_to_sd():
             "blue": blue_threshold,
             "yellow": yellow_threshold,
             "gray": gray_threshold,
-            "white": white_threshold
+            "white": white_threshold,
+            "pink": pink_threshold
+            
         }
 
         # 打开文件并写入数据
@@ -177,7 +180,7 @@ def load_thresholds_from_sd():
         yellow_threshold = tuple(thresholds_data.get("yellow", yellow_threshold))
         gray_threshold = tuple(thresholds_data.get("gray", gray_threshold))
         white_threshold = tuple(thresholds_data.get("white", white_threshold))
-
+        pink_threshold = tuple(thresholds_data.get("pink", pink_threshold))
         # 更新阈值列表
         color_thresholds = [
             red_threshold,
@@ -185,7 +188,8 @@ def load_thresholds_from_sd():
             blue_threshold,
             yellow_threshold,
             gray_threshold,
-            white_threshold
+            white_threshold,
+            pink_threshold
         ]
 
         # 更新当前选择颜色的LAB值
