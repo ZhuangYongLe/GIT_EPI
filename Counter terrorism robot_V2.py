@@ -21,7 +21,7 @@ button_last_state = 0  # 上次按键状态
 
 # 定义全局变量
 img0 = None  # 图像变量
-img1 = None
+img2 = None
 
 # 形状识别相关全局变量】
 solidity_sum = 0
@@ -144,7 +144,7 @@ def save_thresholds_to_sd():
             "gray": gray_threshold,
             "white": white_threshold,
             "pink": pink_threshold
-            
+
         }
 
         # 打开文件并写入数据
@@ -163,7 +163,7 @@ def save_thresholds_to_sd():
 # 从文件加载颜色阈值
 
 def load_thresholds_from_sd():
-    global red_threshold, green_threshold, blue_threshold, yellow_threshold, gray_threshold, white_threshold, color_thresholds, L_MIN, L_MAX, A_MIN, A_MAX, B_MIN, B_MAX
+    global red_threshold, green_threshold, blue_threshold, yellow_threshold, gray_threshold, white_threshold, color_thresholds, L_MIN, L_MAX, A_MIN, A_MAX, B_MIN, B_MAX, pink_threshold
     try:
 
         try:
@@ -275,21 +275,27 @@ def detect(max_blob):  # 输入的是寻找到色块中的最大色块
         density_sum = 0
         roundness_sum = 0
         count = 0
-        row_data = [-1, -1]  # 保存颜色和形状
+        print("avg_solidity:", avg_solidity)
+        print("avg_density:", avg_density)
+        print("avg_roundness:", avg_roundness)
+        row_data = [-1, -1]
         # 使用平均值进行形状判断
         if avg_solidity > 0.91 and avg_density > 0.88 and (avg_roundness < 0.4 and avg_roundness > 0.31):
             row_data[0] = max_blob.code()
             img0.draw_rectangle(max_blob.rect(), color=(255, 0, 0))
-            row_data[1] = 1  # 表示矩形
+            img0.draw_cross(max_blob.cx(), max_blob.cy(),color=(255,0,0))
+            row_data[1] = 1  # 表示圆柱
 
         elif avg_solidity > 0.8 and avg_density > 0.76 and (avg_roundness < 0.35 and avg_roundness > 0.26):
             row_data[0] = max_blob.code()
             img0.draw_rectangle(max_blob.rect(), color=(0, 255, 0))
-            row_data[1] = 2  # 表示梯形
+            img0.draw_cross(max_blob.cx(), max_blob.cy(),color=(0,255,0))
+            row_data[1] = 2  # 表示圆台
 
         elif avg_solidity > 0.75 and avg_density > 0.73 and avg_roundness > 0.4:
             row_data[0] = max_blob.code()
             img0.draw_rectangle(max_blob.rect(), color=(0, 0, 255))
+            img0.draw_cross(max_blob.cx(), max_blob.cy(),color=(0,0,255))
             row_data[1] = 3  # 表示圆鼓
 
         return row_data  # 返回的是两个值，颜色和形状
@@ -476,27 +482,25 @@ def adjust_posture(img, yellow_threshold, gray_threshold):
             uart.write(MA)
 
 def detect_return_area(img):
-    """检测正方形粉红色返回区并返回其中点坐标"""
-    
-    
-    # 先做色块识别
+
+
     blobs = img.find_blobs([pink_threshold])
     if blobs:
-        # 找最大色块
+
         max_blob = find_max(blobs)
         if max_blob and max_blob.pixels() > 1000:
-            # 边缘检测（Canny等，假设img有edge方法，否则略过）
+
             try:
                 edge_img = img.edge(threshold=50)
                 img.draw_image(edge_img, 0, 0)
             except Exception:
                 pass
-            # 画矩形和中心点
+
             img.draw_rectangle(max_blob.rect(), color=(255, 0, 255), thickness=3)
             cx = max_blob.cx()
             cy = max_blob.cy()
             img.draw_cross(cx, cy, color=(255, 0, 255), size=20)
-            # 串口发送坐标
+
             high_x, low_x = split_coordinates(cx)
             high_y, low_y = split_coordinates(cy)
             MA = bytearray([0x06, high_x, low_x, high_y, low_y, 0x00, 0x00, 0x6B])
@@ -520,12 +524,12 @@ try:
     sensor0.set_vflip(False)
 
         # 重置摄像头sensor1并配置参数
-    sensor1 = Sensor(id=1)
-    sensor1.reset()
-    sensor1.set_framesize(width=640,  height=480, chn=CAM_CHN_ID_1)
-    sensor1.set_pixformat(Sensor.RGB565, chn=CAM_CHN_ID_1)
-    sensor1.set_hmirror(False)
-    sensor1.set_vflip(False)
+    sensor2 = Sensor(id=2)
+    sensor2.reset()
+    sensor2.set_framesize(width=640,  height=480, chn=CAM_CHN_ID_1)
+    sensor2.set_pixformat(Sensor.RGB565, chn=CAM_CHN_ID_1)
+    sensor2.set_hmirror(False)
+    sensor2.set_vflip(False)
 
     # 初始化媒体管理器
     MediaManager.init()
@@ -533,7 +537,7 @@ try:
 
         # 启动传感器
     sensor0.run()
-    sensor1.run()
+    sensor2.run()
 
     # 尝试从SD卡加载阈值
     load_thresholds_from_sd()
@@ -590,8 +594,8 @@ try:
             continue
         Display.show_image(img0, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
         # 姿态调整
-        img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
-        adjust_posture(img1, yellow_threshold, gray_threshold)
+        img2 = sensor2.snapshot(chn=CAM_CHN_ID_1)
+        adjust_posture(img2, yellow_threshold, gray_threshold)
 
         # 串口数据接收处理
         uart_flag = b''  # 默认无指令
@@ -710,7 +714,7 @@ try:
         elif (uart_flag == b'\x03\x01\x00\x00\x00\x00\x00\x00') or (uart_flag == b'\x03\x02\x00\x00\x00\x00\x00\x00') or (uart_flag == b'\x03\x03\x00\x00\x00\x00\x00\x00'):
             # 红色靶子
             if uart_flag == b'\x03\x01\x00\x00\x00\x00\x00\x00':
-                img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
+                img2 = sensor2.snapshot(chn=CAM_CHN_ID_1)
                 if check_for_new_command():
                     break
                 target_threshold = red_threshold
@@ -724,12 +728,12 @@ try:
                     uart.write(MA)
 
                 # 显示捕获的图像，中心对齐，居中显示
-                Display.show_image(img1, x=int((DISPLAY_WIDTH - picture_width) / 2),
+                Display.show_image(img2, x=int((DISPLAY_WIDTH - picture_width) / 2),
                                    y=int((DISPLAY_HEIGHT - picture_height) / 2))
 
             # 绿色靶子
             elif uart_flag == b'\x03\x02\x00\x00\x00\x00\x00\x00':
-                img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
+                img2 = sensor2.snapshot(chn=CAM_CHN_ID_1)
                 if check_for_new_command():
                     break
                 target_threshold = green_threshold
@@ -743,11 +747,11 @@ try:
                     uart.write(MA)
 
                 # 显示捕获的图像，中心对齐，居中显示
-                Display.show_image(img1, x=int((DISPLAY_WIDTH - picture_width) / 2),
+                Display.show_image(img2, x=int((DISPLAY_WIDTH - picture_width) / 2),
                                    y=int((DISPLAY_HEIGHT - picture_height) / 2))
             # 蓝色靶子
             elif uart_flag == b'\x03\x03\x00\x00\x00\x00\x00\x00':
-                img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
+                img2 = sensor2.snapshot(chn=CAM_CHN_ID_1)
                 if check_for_new_command():
                     break
                 target_threshold = blue_threshold
@@ -761,7 +765,7 @@ try:
                     uart.write(MA)
 
                 # 显示捕获的图像，中心对齐，居中显示
-                Display.show_image(img1, x=int((DISPLAY_WIDTH - picture_width) / 2),
+                Display.show_image(img2, x=int((DISPLAY_WIDTH - picture_width) / 2),
                                    y=int((DISPLAY_HEIGHT - picture_height) / 2))
 
 
@@ -779,25 +783,20 @@ try:
                 avg_roundness = 0
 
                 while True:
-                    img0 = sensor0.snapshot()
+                    img0 = sensor0.snapshot(chn=CAM_CHN_ID_0)
                     if check_for_new_command():
                         break
                     blobs = img0.find_blobs([white_threshold])
-                    # 显示当前累加计数
-                    img0.draw_string_advanced(5, 5, "Count: {}/50".format(count), color=(255, 0, 0))
-
                     if blobs:
                         max_blob = find_max_hostage(blobs)
+                        result = detect(max_blob)
                         center_x = max_blob.cx()
                         center_y = max_blob.cy()
-                        # 使用独立函数拆分坐标为高低字节
                         high_byte_x, low_byte_x = split_coordinates(center_x)
                         high_byte_y, low_byte_y = split_coordinates(center_y)
-                        # 返回最大的色块
-                        result = detect(max_blob)
                         if result:
                             print(result[1])
-                            if result[1] == 1:  # 矩形
+                            if result[1] == 1:  # 圆柱
                                 MA = bytearray([0x04, high_byte_x, low_byte_x, high_byte_y, low_byte_y, 0x00, 0x00, 0x6B])
                                 uart.write(MA)
             elif uart_flag == b'\x04\x02\x00\x00\x00\x00\x00\x00':
@@ -810,25 +809,21 @@ try:
                 avg_roundness = 0
 
                 while True:
-                    img0 = sensor0.snapshot()
+                    img0 = sensor0.snapshot(chn=CAM_CHN_ID_0)
                     if check_for_new_command():
                         break
                     blobs = img0.find_blobs([white_threshold])
-                    # 显示当前累加计数
-                    img0.draw_string_advanced(5, 5, "Count: {}/50".format(count), color=(255, 0, 0))
 
                     if blobs:
                         max_blob = find_max_hostage(blobs)
+                        result = detect(max_blob)
                         center_x = max_blob.cx()
                         center_y = max_blob.cy()
-                        # 使用独立函数拆分坐标为高低字节
                         high_byte_x, low_byte_x = split_coordinates(center_x)
                         high_byte_y, low_byte_y = split_coordinates(center_y)
-                        # 返回最大的色块
-                        result = detect(max_blob)
                         if result:
                             print(result[1])
-                            if result[1] == 2:  # 梯形
+                            if result[1] == 2:  # 圆台
                                 MA = bytearray(
                                     [0x04, high_byte_x, low_byte_x, high_byte_y, low_byte_y, 0x00, 0x00, 0x6B])
                                 uart.write(MA)
@@ -842,22 +837,17 @@ try:
                 avg_roundness = 0
 
                 while True:
-                    img0 = sensor0.snapshot()
+                    img0 = sensor0.snapshot(chn=CAM_CHN_ID_0)
                     if check_for_new_command():
                         break
                     blobs = img0.find_blobs([white_threshold])
-                    # 显示当前累加计数
-                    img0.draw_string_advanced(5, 5, "Count: {}/50".format(count), color=(255, 0, 0))
-
                     if blobs:
                         max_blob = find_max_hostage(blobs)
+                        result = detect(max_blob)
                         center_x = max_blob.cx()
                         center_y = max_blob.cy()
-                        # 使用独立函数拆分坐标为高低字节
                         high_byte_x, low_byte_x = split_coordinates(center_x)
                         high_byte_y, low_byte_y = split_coordinates(center_y)
-                        # 返回最大的色块
-                        result = detect(max_blob)
                         if result:
                             print(result[1])
                             if result[1] == 3:  # 腰鼓
@@ -868,16 +858,15 @@ try:
         # 返回区（正方形粉红色区域）
         elif uart_flag == b'\x05\x00\x00\x00\x00\x00\x00\x00':
             while True:
-                img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
+                img0 = sensor0.snapshot(chn=CAM_CHN_ID_0)
                 if check_for_new_command():
                     break
-                detect_return_area(img1)
-                Display.show_image(img1, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
+                detect_return_area(img0)
+                Display.show_image(img0, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
 
         # 显示捕获的图像，中心对齐，居中显示
-        Display.show_image(img1)
-        # 短暂延时，避免cpu占用过高
-        time.sleep_ms(100)
+        Display.show_image(img0, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
+
 
 except KeyboardInterrupt as e:
     print("用户终止：", e)  # 捕获键盘中断异常

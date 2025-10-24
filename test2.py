@@ -34,7 +34,7 @@ avg_roundness = 0
 
 # 定义传感器变量
 sensor0 = None
-sensor1 = None
+sensor2 = None
 # 显示模式选择
 DISPLAY_MODE = "LCD"
 
@@ -55,8 +55,57 @@ green_threshold = (76, 21, -46, -21, 12, 40)  # 绿色阈值
 blue_threshold = (0, 50, -20, 20, -60, -10)  # 蓝色阈值
 
 
+def find_max(blobs):
+    max_blob = None
+    max_size = 0
+    for blob in blobs:
+        # 兼容w()/h()和直接下标
+        if hasattr(blob, 'w') and hasattr(blob, 'h'):
+            size = blob.w() * blob.h()
+        else:
+            size = blob[2] * blob[3]
+        if size > max_size:
+            max_blob = blob
+            max_size = size
+    return max_blob
 
 
+def detect(max_blob，img):  # 输入的是寻找到色块中的最大色块
+    global solidity_sum, density_sum, roundness_sum, count, avg_solidity, avg_density, avg_roundness,img0
+    # 累加solidity和density值
+    solidity_sum += max_blob.solidity()
+    density_sum += max_blob.density()
+    roundness_sum += max_blob.roundness()
+    count += 1
+    # 如果累加次数达到50次，计算平均值
+    if count >= 50:
+        avg_solidity = solidity_sum / count
+        avg_density = density_sum / count
+        avg_roundness = roundness_sum / count
+        # 重置累加器
+        solidity_sum = 0
+        density_sum = 0
+        roundness_sum = 0
+        count = 0
+        row_data = [-1, -1]  # 保存颜色和形状
+        # 使用平均值进行形状判断
+        if avg_solidity > 0.91 and avg_density > 0.88 and (avg_roundness < 0.4 and avg_roundness > 0.31):
+            row_data[0] = max_blob.code()
+            if img is not None:
+                img.draw_rectangle(max_blob.rect(), color=(255, 0, 0))
+            row_data[1] = 1  # 表示矩形
+        elif avg_solidity > 0.8 and avg_density > 0.76 and (avg_roundness < 0.35 and avg_roundness > 0.26):
+            row_data[0] = max_blob.code()
+            if img is not None:
+                img.draw_rectangle(max_blob.rect(), color=(0, 255, 0))
+            row_data[1] = 2  # 表示梯形
+        elif avg_solidity > 0.75 and avg_density > 0.73 and avg_roundness > 0.4:
+            row_data[0] = max_blob.code()
+            if img is not None:
+                img.draw_rectangle(max_blob.rect(), color=(0, 0, 255))
+            row_data[1] = 3  # 表示圆鼓
+        return row_data  # 返回的是两个值，颜色和形状
+    return None  # 如果还没有累加够50次，返回None
 
 
 def detect_center(img1, target_threshold):
@@ -111,6 +160,69 @@ def process_blobs(img, threshold):
             return True
     return False
 
+#人质色块寻找函数
+def find_max_hostage(blobs):
+    max_blob = None
+    max_size = 0
+    for blob in blobs:
+        if hasattr(blob, 'w') and hasattr(blob, 'h'):
+            size = blob.w() * blob.h()
+        else:
+            size = blob[2] * blob[3]
+        if size > max_size:
+            max_blob = blob
+            max_size = size
+
+    return max_blob
+def detect(max_blob):#输入的是寻找到色块中的最大色块
+    global solidity_sum, density_sum, roundness_sum, count, avg_solidity, avg_density,avg_roundness
+    # 累加solidity和density值
+    solidity_sum += max_blob.solidity()
+    density_sum += max_blob.density()
+    roundness_sum +=  max_blob.roundness()
+    count += 1
+    print("count:{}".format(count))
+    # 如果累加次数达到50次，计算平均值
+    if count >= 50:
+        avg_solidity = solidity_sum / count
+        avg_density = density_sum / count
+        avg_roundness = roundness_sum / count
+        print("avg_solidity:", avg_solidity)
+        print("avg_density:", avg_density)
+        print("avg_roundness:", avg_roundness)
+
+        # 重置累加器
+        solidity_sum = 0
+        density_sum = 0
+        roundness_sum = 0
+        count = 0
+        row_data = [-1, -1]  # 保存颜色和形状
+        #使用平均值进行形状判断
+        if avg_solidity > 0.91 and avg_density > 0.88 and (avg_roundness<0.4 and avg_roundness >0.31):
+            row_data[0] = max_blob.code()
+            # img.draw_rectangle(max_blob.rect(), color=(255, 0, 0))
+            row_data[1] = 1  # 表示矩形
+            #print("Average solidity:", avg_solidity, "Average density:", avg_density,"Average roundnes:", avg_roundness)
+        elif avg_solidity > 0.8 and avg_density > 0.76 and (avg_roundness<0.35 and avg_roundness >0.26):
+            row_data[0] = max_blob.code()
+            # img.draw_rectangle(max_blob.rect(), color=(0, 255, 0))
+            row_data[1] = 2  # 表示梯形
+            #print("Average solidity:", avg_solidity, "Average density:", avg_density,"Average roundnes:", avg_roundness)
+        elif avg_solidity > 0.75 and avg_density > 0.73  and avg_roundness > 0.4:
+            row_data[0] = max_blob.code()
+            # img.draw_rectangle(max_blob.rect(), color=(0, 0, 255))
+            row_data[1] = 3  # 表示圆鼓
+            #print("Average solidity:", avg_solidity, "Average density:", avg_density,"Average roundnes:", avg_roundness)
+        return row_data  # 返回的是两个值，颜色和形状
+    return None  # 如果还没有累加够50次，返回None
+def find_max(blobs):
+    max_blob = None
+    max_size = 0
+    for blob in blobs:
+        if blob.w() * blob.h() > max_size:
+            max_blob = blob
+            max_size = blob.w() * blob.h()
+    return max_blob
 try:
     # 显示初始化
     Display.init(Display.ST7701, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, to_ide=True)
@@ -123,12 +235,12 @@ try:
     sensor0.set_vflip(False)
 
         # 重置摄像头sensor1并配置参数
-    sensor1 = Sensor(id=1)
-    sensor1.reset()
-    sensor1.set_framesize(width=600,  height=480, chn=CAM_CHN_ID_1)
-    sensor1.set_pixformat(Sensor.RGB565, chn=CAM_CHN_ID_1)
-    sensor1.set_hmirror(False)
-    sensor1.set_vflip(False)
+    sensor2 = Sensor(id=2)
+    sensor2.reset()
+    sensor2.set_framesize(width=640,  height=480, chn=CAM_CHN_ID_1)
+    sensor2.set_pixformat(Sensor.RGB565, chn=CAM_CHN_ID_1)
+    sensor2.set_hmirror(False)
+    sensor2.set_vflip(False)
     if DISPLAY_MODE == "LCD":
         Display.init(Display.LT9611, width=640,  height=480, to_ide=True)
 
@@ -139,20 +251,40 @@ try:
 
         # 启动传感器
     sensor0.run()
-    sensor1.run()
+    sensor2.run()
 
     clock = time.clock()
     while True:
         clock.tick()
         os.exitpoint()
-        img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
-        target_threshold = green_threshold
-        result = detect_center(img1, target_threshold)
-        if result:
-            x, y = result
-            print(f"圆心坐标: ({x}, {y})")
+        solidity_sum = 0
+        density_sum = 0
+        roundness_sum = 0
+        count = 0
+        avg_solidity = 0
+        avg_density = 0
+        avg_roundness = 0
 
-        Display.show_image(img1)
+
+
+
+        white_threshold = (89, 100, -13, 10, -14, 16) #修改阈值
+        while True:
+            img0 = sensor0.snapshot(chn=CAM_CHN_ID_0)
+            blobs = img0.find_blobs([white_threshold])
+            # 显示当前累加计数
+
+            if blobs:
+                max_blob = find_max_hostage(blobs)  # 返回最大的色块
+                img0.draw_rectangle(max_blob.rect())
+                print(1)
+                img0.draw_cross(max_blob.cx(), max_blob.cy())
+                result = detect(max_blob)
+                if result:
+                    print(result[1])
+                    if result[1] == 1:#矩形
+                        print("矩形")
+            Display.show_image(img0)
 
 except KeyboardInterrupt as e:
     print("用户终止：", e)  # 捕获键盘中断异常
