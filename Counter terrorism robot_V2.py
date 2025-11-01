@@ -21,7 +21,7 @@ button_last_state = 0  # 上次按键状态
 
 # 定义全局变量
 img0 = None  # 图像变量
-img2 = None
+img1 = None
 
 # 形状识别相关全局变量】
 solidity_sum = 0
@@ -98,11 +98,12 @@ tp = TOUCH(0)
 # 当前使用的阈值变量
 yellow_threshold = (36, 100, -24, 1, 15, 64)  # 黄色阈值
 gray_threshold = (11, 65, -16, 15, -28, 26)  # 灰色阈值
-white_threshold = (89, 100, -13, 10, -14, 16)  # 白色阈值
+white_threshold = (89, 68, 4, -11, 17, -7)  # 白色阈值
 red_threshold = (40, 8, 8, 50, 11, 42)  # 红色阈值
 green_threshold = (76, 21, -46, -21, 12, 40)  # 绿色阈值
-blue_threshold = (0, 50, -20, 20, -60, -10)  # 蓝色阈值
+blue_threshold = (6, 51, -7, 19, -56, -17)  # 蓝色阈值
 pink_threshold = (40, 80, 10, 60, 0, 60)  # 粉红色阈值
+black_threshold = (0, 49, -10, 5, 32, -128)
 # 添加颜色选择变量和颜色列表
 current_color_index = 0
 color_names = ["red", "green", "blue", "yellow", "gray", "white","pink"]
@@ -244,17 +245,13 @@ def find_max(blobs):
 """
                     识别圆环函数（反恐区）
 """
-def detect_center(img, target_threshold):
-    """检测图像中的圆,返回圆心坐标或None"""
-    mask = img.binary([target_threshold])
-    circles = mask.find_circles(threshold=6000, x_margin=10, y_margin=18, r_margin=10,
-                                r_min=18, r_max=40, r_step=2)
-    if circles:
-        best_circle = min(circles, key=lambda c: c.r())
-        img.draw_circle(best_circle.x(), best_circle.y(), best_circle.r(), color=(255,0,0))
-        img.draw_cross(best_circle.x(), best_circle.y(), color=(255,0,0))
-        return best_circle.x(), best_circle.y()
-    return None
+def find_min_circle(circles):
+    min_size = 10000
+    for circle in circles:
+        if circle.r()<min_size:
+            min_circle = circle
+            min_size = circle.r()
+            return min_circle
 """
                     形状识别
 """
@@ -523,13 +520,13 @@ try:
     sensor0.set_hmirror(False)
     sensor0.set_vflip(False)
 
-        # 重置摄像头sensor1并配置参数
-    sensor2 = Sensor(id=2)
-    sensor2.reset()
-    sensor2.set_framesize(width=640,  height=480, chn=CAM_CHN_ID_1)
-    sensor2.set_pixformat(Sensor.RGB565, chn=CAM_CHN_ID_1)
-    sensor2.set_hmirror(False)
-    sensor2.set_vflip(False)
+    # 重置摄像头sensor1并配置参数
+    sensor1 = Sensor(id=1)
+    sensor1.reset()
+    sensor1.set_framesize(width=320,  height=160, chn=CAM_CHN_ID_1)
+    sensor1.set_pixformat(Sensor.RGB565, chn=CAM_CHN_ID_1)
+    sensor1.set_hmirror(False)
+    sensor1.set_vflip(False)
 
     # 初始化媒体管理器
     MediaManager.init()
@@ -537,7 +534,7 @@ try:
 
         # 启动传感器
     sensor0.run()
-    sensor2.run()
+    sensor1.run()
 
     # 尝试从SD卡加载阈值
     load_thresholds_from_sd()
@@ -549,6 +546,8 @@ try:
         os.exitpoint()
 
         img0 = sensor0.snapshot(chn=CAM_CHN_ID_0)
+        # 确保在阈值调整模式下也显示图像
+
 
 
         # 检测按键状态用于切换阈值调整模式
@@ -593,12 +592,9 @@ try:
                 color_thresholds[5] = white_threshold
             continue
         Display.show_image(img0, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
-        # 姿态调整
-        img2 = sensor2.snapshot(chn=CAM_CHN_ID_1)
-        adjust_posture(img2, yellow_threshold, gray_threshold)
+
 
         # 串口数据接收处理
-        uart_flag = b''  # 默认无指令
         if uart.any():
             list_flag = uart.read()
             if list_flag is None:
@@ -693,7 +689,7 @@ try:
                 img0 = sensor0.snapshot(chn=CAM_CHN_ID_0)
                 if check_for_new_command():
                     break
-                blobs = img0.find_blobs([0, 0, 0, 30, 0, 50])  # 黑色防爆桶
+                blobs = img0.find_blobs([black_threshold])  # 黑色防爆桶
                 if blobs:
                     max_blob = find_max(blobs)
                     if max_blob.pixels() > 1000:
@@ -714,59 +710,79 @@ try:
         elif (uart_flag == b'\x03\x01\x00\x00\x00\x00\x00\x00') or (uart_flag == b'\x03\x02\x00\x00\x00\x00\x00\x00') or (uart_flag == b'\x03\x03\x00\x00\x00\x00\x00\x00'):
             # 红色靶子
             if uart_flag == b'\x03\x01\x00\x00\x00\x00\x00\x00':
-                img2 = sensor2.snapshot(chn=CAM_CHN_ID_1)
-                if check_for_new_command():
-                    break
-                target_threshold = red_threshold
-                result = detect_center(img, threshold)
-                if result:
-                    x, y = result
-                    print(f"圆心坐标: ({x}, {y})")
-                    high_byte_x, low_byte_x = split_coordinates(center_x)
-                    high_byte_y, low_byte_y = split_coordinates(center_y)
-                    MA = bytearray([0x02, 0x01, high_byte_x, low_byte_x,high_byte_y, low_byte_y, 0x00, 0x6B])
-                    uart.write(MA)
+                while True:
+                    if check_for_new_command():
+                        break
+                    img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
+                    img1 = img1.binary([green_threshold]).gaussian(3)
 
-                # 显示捕获的图像，中心对齐，居中显示
-                Display.show_image(img2, x=int((DISPLAY_WIDTH - picture_width) / 2),
-                                   y=int((DISPLAY_HEIGHT - picture_height) / 2))
+                    circles = img1.find_circles(threshold = 7000, x_margin = 5, y_margin = 5, r_margin = 5,
+                    r_min = 10, r_max = 14, r_step = 1)
+                    if circles:
+                        min_circle = find_min_circle(circles)   #找到最小的圆
+                        img1.draw_circle(min_circle.x()-min_circle.r()+min_circle.r(),min_circle.y()-min_circle.r()+min_circle.r(),min_circle.r(), color = (250, 0, 0))
+                        img1.draw_cross(min_circle.x(), min_circle.y(),color = (250, 0, 0))
+                        min_x=min_circle.x()
+                        min_y=min_circle.y()
+                        high_byte_x, low_byte_x = split_coordinates(min_x)
+                        high_byte_y, low_byte_y = split_coordinates(min_y)
+                        print("坐标为（{},{}）".format(min_x,min_y))
+                        MA = bytearray([0x03,high_byte_x,low_byte_x,high_byte_y,low_byte_y,0x00,0x00,0x6B])
+                        uart.write(MA)
+
+                    Display.show_image(img1, x=int((DISPLAY_WIDTH - 320) / 2),
+                                       y=int((DISPLAY_HEIGHT - 160) / 2))
 
             # 绿色靶子
             elif uart_flag == b'\x03\x02\x00\x00\x00\x00\x00\x00':
-                img2 = sensor2.snapshot(chn=CAM_CHN_ID_1)
-                if check_for_new_command():
-                    break
-                target_threshold = green_threshold
-                result = detect_center(img, threshold)
-                if result:
-                    x, y = result
-                    print(f"圆心坐标: ({x}, {y})")
-                    high_byte_x, low_byte_x = split_coordinates(center_x)
-                    high_byte_y, low_byte_y = split_coordinates(center_y)
-                    MA = bytearray([0x02, 0x02, high_byte_x, low_byte_x,high_byte_y, low_byte_y, 0x00, 0x6B])
-                    uart.write(MA)
+                while True:
+                    if check_for_new_command():
+                        break
+                    img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
+                    img1 = img1.binary([green_threshold]).gaussian(4)
 
-                # 显示捕获的图像，中心对齐，居中显示
-                Display.show_image(img2, x=int((DISPLAY_WIDTH - picture_width) / 2),
-                                   y=int((DISPLAY_HEIGHT - picture_height) / 2))
+                    circles = img1.find_circles(threshold = 7000, x_margin = 5, y_margin = 5, r_margin = 5,
+                    r_min = 10, r_max = 14, r_step = 1)
+                    if circles:
+                        min_circle = find_min_circle(circles)   #找到最小的圆
+                        img1.draw_circle(min_circle.x()-min_circle.r()+min_circle.r(),min_circle.y()-min_circle.r()+min_circle.r(),min_circle.r(), color = (250, 0, 0))
+                        img1.draw_cross(min_circle.x(), min_circle.y(),color = (250, 0, 0))
+                        min_x=min_circle.x()
+                        min_y=min_circle.y()
+                        high_byte_x, low_byte_x = split_coordinates(min_x)
+                        high_byte_y, low_byte_y = split_coordinates(min_y)
+                        print("坐标为（{},{}）".format(min_x,min_y))
+                        MA = bytearray([0x03,high_byte_x,low_byte_x,high_byte_y,low_byte_y,0x00,0x00,0x6B])
+                        uart.write(MA)
+
+                    Display.show_image(img1, x=int((DISPLAY_WIDTH - 320) / 2),
+                                       y=int((DISPLAY_HEIGHT - 160) / 2))
+
+
             # 蓝色靶子
             elif uart_flag == b'\x03\x03\x00\x00\x00\x00\x00\x00':
-                img2 = sensor2.snapshot(chn=CAM_CHN_ID_1)
-                if check_for_new_command():
-                    break
-                target_threshold = blue_threshold
-                result = detect_center(img, threshold)
-                if result:
-                    x, y = result
-                    print(f"圆心坐标: ({x}, {y})")
-                    high_byte_x, low_byte_x = split_coordinates(center_x)
-                    high_byte_y, low_byte_y = split_coordinates(center_y)
-                    MA = bytearray([0x02, 0x03, high_byte_x, low_byte_x,high_byte_y, low_byte_y, 0x00, 0x6B])
-                    uart.write(MA)
+                while True:
+                    if check_for_new_command():
+                        break
+                    img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
+                    img1 = img1.binary([blue_threshold]).gaussian(4)
 
-                # 显示捕获的图像，中心对齐，居中显示
-                Display.show_image(img2, x=int((DISPLAY_WIDTH - picture_width) / 2),
-                                   y=int((DISPLAY_HEIGHT - picture_height) / 2))
+                    circles = img1.find_circles(threshold = 7000, x_margin = 5, y_margin = 5, r_margin = 5,
+                    r_min = 10, r_max = 14, r_step = 1)
+                    if circles:
+                        min_circle = find_min_circle(circles)   #找到最小的圆
+                        img1.draw_circle(min_circle.x()-min_circle.r()+min_circle.r(),min_circle.y()-min_circle.r()+min_circle.r(),min_circle.r(), color = (250, 0, 0))
+                        img1.draw_cross(min_circle.x(), min_circle.y(),color = (250, 0, 0))
+                        min_x=min_circle.x()
+                        min_y=min_circle.y()
+                        high_byte_x, low_byte_x = split_coordinates(min_x)
+                        high_byte_y, low_byte_y = split_coordinates(min_y)
+                        print("坐标为（{},{}）".format(min_x,min_y))
+                        MA = bytearray([0x03,high_byte_x,low_byte_x,high_byte_y,low_byte_y,0x00,0x00,0x6B])
+                        uart.write(MA)
+
+                    Display.show_image(img1, x=int((DISPLAY_WIDTH - 320) / 2),
+                                       y=int((DISPLAY_HEIGHT - 160) / 2))
 
 
 
@@ -854,9 +870,13 @@ try:
                                 MA = bytearray(
                                     [0x04, high_byte_x, low_byte_x, high_byte_y, low_byte_y, 0x00, 0x00, 0x6B])
                                 uart.write(MA)
-
-        # 返回区（正方形粉红色区域）
+        # 姿态调整
         elif uart_flag == b'\x05\x00\x00\x00\x00\x00\x00\x00':
+            while:
+                img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
+                adjust_posture(img1, yellow_threshold, gray_threshold)
+        #返回区（正方形粉红色区域）
+        elif uart_flag == b'\x06\x00\x00\x00\x00\x00\x00\x00':
             while True:
                 img0 = sensor0.snapshot(chn=CAM_CHN_ID_0)
                 if check_for_new_command():

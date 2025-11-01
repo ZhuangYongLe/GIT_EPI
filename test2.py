@@ -52,7 +52,7 @@ gray_threshold = (11, 65, -16, 15, -28, 26)  # 灰色阈值
 white_threshold = (89, 100, -13, 10, -14, 16)  # 白色阈值
 red_threshold = (40, 8, 8, 50, 11, 42)  # 红色阈值
 green_threshold = (76, 21, -46, -21, 12, 40)  # 绿色阈值
-blue_threshold = (0, 50, -20, 20, -60, -10)  # 蓝色阈值
+blue_threshold = (6, 51, -7, 19, -56, -17)  # 蓝色阈值
 
 
 def find_max(blobs):
@@ -108,17 +108,7 @@ def detect(max_blob，img):  # 输入的是寻找到色块中的最大色块
     return None  # 如果还没有累加够50次，返回None
 
 
-def detect_center(img1, target_threshold):
-    """检测图像中的圆心，返回圆心坐标或None"""
-    mask = img1.binary([target_threshold])
-    circles = mask.find_circles(threshold=6000, x_margin=10, y_margin=18, r_margin=10,
-                                r_min=18, r_max=40, r_step=2)
-    if circles:
-        best_circle = min(circles, key=lambda c: c.r())
-        img1.draw_circle(best_circle.x(), best_circle.y(), best_circle.r(), color=(255,0,0))
-        img1.draw_cross(best_circle.x(), best_circle.y(), color=(255,0,0))
-        return best_circle.x(), best_circle.y()
-    return None
+
 
 def split_coordinates(value):
     """将16位坐标值分割为高低字节"""
@@ -140,25 +130,7 @@ def check_for_new_command():
             return True
     return False
 
-def process_blobs(img, threshold):
-    """查找色块并处理，返回是否找到目标色块"""
-    blobs = img.find_blobs([threshold])
-    if blobs:
-        max_blob = find_max(blobs)
-        if max_blob.pixels() > 1000:
-            img.draw_rectangle(max_blob.rect())
-            img.draw_cross(max_blob.cx(), max_blob.cy())
-            adjust_x = max_blob.cx()
 
-
-
-            result = detect_center(img, threshold)
-            if result:
-                x, y = result
-                print(f"圆心坐标: ({x}, {y})")
-
-            return True
-    return False
 
 #人质色块寻找函数
 def find_max_hostage(blobs):
@@ -235,12 +207,12 @@ try:
     sensor0.set_vflip(False)
 
         # 重置摄像头sensor1并配置参数
-    sensor2 = Sensor(id=2)
-    sensor2.reset()
-    sensor2.set_framesize(width=640,  height=480, chn=CAM_CHN_ID_1)
-    sensor2.set_pixformat(Sensor.RGB565, chn=CAM_CHN_ID_1)
-    sensor2.set_hmirror(False)
-    sensor2.set_vflip(False)
+    sensor1 = Sensor(id=1)
+    sensor1.reset()
+    sensor1.set_framesize(width=320,  height=160, chn=CAM_CHN_ID_1)
+    sensor1.set_pixformat(Sensor.RGB565, chn=CAM_CHN_ID_1)
+    sensor1.set_hmirror(False)
+    sensor1.set_vflip(False)
     if DISPLAY_MODE == "LCD":
         Display.init(Display.LT9611, width=640,  height=480, to_ide=True)
 
@@ -251,40 +223,37 @@ try:
 
         # 启动传感器
     sensor0.run()
-    sensor2.run()
+    sensor1.run()
 
     clock = time.clock()
     while True:
         clock.tick()
         os.exitpoint()
-        solidity_sum = 0
-        density_sum = 0
-        roundness_sum = 0
-        count = 0
-        avg_solidity = 0
-        avg_density = 0
-        avg_roundness = 0
 
-
-
-
-        white_threshold = (89, 100, -13, 10, -14, 16) #修改阈值
         while True:
-            img0 = sensor0.snapshot(chn=CAM_CHN_ID_0)
-            blobs = img0.find_blobs([white_threshold])
-            # 显示当前累加计数
 
-            if blobs:
-                max_blob = find_max_hostage(blobs)  # 返回最大的色块
-                img0.draw_rectangle(max_blob.rect())
-                print(1)
-                img0.draw_cross(max_blob.cx(), max_blob.cy())
-                result = detect(max_blob)
-                if result:
-                    print(result[1])
-                    if result[1] == 1:#矩形
-                        print("矩形")
-            Display.show_image(img0)
+            def find_min_circle(circles):
+                min_size = 10000
+                for circle in circles:
+                    if circle.r()<min_size:
+                        min_circle = circle
+                        min_size = circle.r()
+                        return min_circle
+            img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
+            img1 = img1.binary([blue_threshold]).gaussian(3)
+
+            circles = img1.find_circles(threshold = 5000, x_margin = 20, y_margin = 20, r_margin = 20,
+            r_min = 20, r_max = 50, r_step = 2)
+            if circles:
+                min_circle = find_min_circle(circles)   #找到最小的圆
+                img1.draw_circle(min_circle.x()-min_circle.r()+min_circle.r(),min_circle.y()-min_circle.r()+min_circle.r(),min_circle.r(), color = (250, 0, 0))
+                img1.draw_cross(min_circle.x(), min_circle.y(),color = (250, 0, 0))
+                min_x=min_circle.x()
+                min_y=min_circle.y()
+                print("坐标为（{},{}）".format(min_x,min_y))
+                FH = bytearray([0x02,min_x,min_y,0x00,0x00,0x00,0x00,0x6B])
+                uart.write(FH)
+            Display.show_image(img1)
 
 except KeyboardInterrupt as e:
     print("用户终止：", e)  # 捕获键盘中断异常
