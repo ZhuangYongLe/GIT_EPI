@@ -103,10 +103,10 @@ red_threshold = (40, 8, 8, 50, 11, 42)  # 红色阈值
 green_threshold = (76, 21, -46, -21, 12, 40)  # 绿色阈值
 blue_threshold = (6, 51, -7, 19, -56, -17)  # 蓝色阈值
 pink_threshold = (40, 80, 10, 60, 0, 60)  # 粉红色阈值
-black_threshold = (0, 49, -10, 5, 32, -128)
+black_threshold = (0, 17, -10, 5, 32, -128)
 # 添加颜色选择变量和颜色列表
 current_color_index = 0
-color_names = ["red", "green", "blue", "yellow", "gray", "white","pink"]
+color_names = ["red", "green", "blue", "yellow", "gray", "white","pink","black"]
 color_thresholds = [
     red_threshold,
     green_threshold,
@@ -114,7 +114,8 @@ color_thresholds = [
     yellow_threshold,
     gray_threshold,
     white_threshold,
-    pink_threshold
+    pink_threshold,
+    black_threshold
 ]
 current_color = color_names[current_color_index]
 save_success_message = ""  # 保存成功提示消息
@@ -136,6 +137,7 @@ def save_thresholds_to_sd():
         gray_threshold = color_thresholds[4]
         white_threshold = color_thresholds[5]
         pink_threshold = color_thresholds[6]
+        black_threshold = color_thresholds[7]
         # 准备保存的数据
         thresholds_data = {
             "red": red_threshold,
@@ -144,8 +146,8 @@ def save_thresholds_to_sd():
             "yellow": yellow_threshold,
             "gray": gray_threshold,
             "white": white_threshold,
-            "pink": pink_threshold
-
+            "pink": pink_threshold,
+            "black":black_threshold
         }
 
         # 打开文件并写入数据
@@ -182,6 +184,7 @@ def load_thresholds_from_sd():
         gray_threshold = tuple(thresholds_data.get("gray", gray_threshold))
         white_threshold = tuple(thresholds_data.get("white", white_threshold))
         pink_threshold = tuple(thresholds_data.get("pink", pink_threshold))
+        black_threshold = tuple(threshold_data.get("black",black_threshold))
         # 更新阈值列表
         color_thresholds = [
             red_threshold,
@@ -190,7 +193,8 @@ def load_thresholds_from_sd():
             yellow_threshold,
             gray_threshold,
             white_threshold,
-            pink_threshold
+            pink_threshold,
+            black_threshold
         ]
 
         # 更新当前选择颜色的LAB值
@@ -872,9 +876,13 @@ try:
                                 uart.write(MA)
         # 姿态调整
         elif uart_flag == b'\x05\x00\x00\x00\x00\x00\x00\x00':
-            while:
+            while True:
+                if check_for_new_command():
+                    break
                 img1 = sensor1.snapshot(chn=CAM_CHN_ID_1)
+
                 adjust_posture(img1, yellow_threshold, gray_threshold)
+                Display.show_image(img1, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
         #返回区（正方形粉红色区域）
         elif uart_flag == b'\x06\x00\x00\x00\x00\x00\x00\x00':
             while True:
@@ -882,7 +890,7 @@ try:
                 if check_for_new_command():
                     break
                 detect_return_area(img0)
-                Display.show_image(img0, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
+                Display.show_image(img0, x=int((DISPLAY_WIDTH - 320) / 2), y=int((DISPLAY_HEIGHT - 160) / 2))
 
         # 显示捕获的图像，中心对齐，居中显示
         Display.show_image(img0, x=int((DISPLAY_WIDTH - picture_width) / 2), y=int((DISPLAY_HEIGHT - picture_height) / 2))
