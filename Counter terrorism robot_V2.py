@@ -433,7 +433,7 @@ def buttonAction(direction, index):
         if step > 5:
             step = 1
 
-# 触摸屏事件
+# 摸屏事件
 def touchAction():
     global timeTouch
     touchP = tp.read(2)
