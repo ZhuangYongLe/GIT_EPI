@@ -37,12 +37,16 @@ class FaceDetectionApp(AIBase):
     # 自定义当前任务的后处理，results是模型输出array列表，这里使用了aidemo库的face_det_post_process接口
     def postprocess(self, results):
         with ScopedTiming("postprocess", self.debug_mode > 0):
-            post_ret = aidemo.face_det_post_process(self.confidence_threshold, self.nms_threshold, self.model_input_size[1], self.anchors, self.rgb888p_size, results)
-            if len(post_ret) == 0:
-                return post_ret
-            else:
-                return post_ret[0]
-
+            print(len(results),len(results[0]),len(results[0][0]),len(results[0][0][0]))
+            for i in range(1):
+                result = results[0][0][:, i]
+                max_socre = max(result[4:])
+                if max_socre > self.confidence_threshold:
+                    x = result[0]*max(self.rgb888p_size)/max(self.model_input_size)
+                    y = result[1]*max(self.rgb888p_size)/max(self.model_input_size)
+                    w = result[2]*max(self.rgb888p_size)/max(self.model_input_size)
+                    h = result[3]*max(self.rgb888p_size)/max(self.model_input_size)
+                    det_res.append([x, y, w, h, list(result[4:]).index(max_sorce) , max_socre])
     # 绘制检测结果到画面上
     def draw_result(self, pl, dets):
         with ScopedTiming("display_draw", self.debug_mode > 0):
@@ -55,7 +59,9 @@ class FaceDetectionApp(AIBase):
                     y = y * self.display_size[1] // self.rgb888p_size[1]
                     w = w * self.display_size[0] // self.rgb888p_size[0]
                     h = h * self.display_size[1] // self.rgb888p_size[1]
-                    pl.osd_img.draw_rectangle(x, y, w, h, color=(255, 255, 0, 255), thickness=2)  # 绘制矩形框
+                    pl.osd_img.draw_rectangle(x-w//2, y-h//2, w, h, color=(255, 0, 255, 0), thickness=2)  # 绘制矩形框
+                    pl.osd_img.draw_string_advanced(x-w//2,y-h//2,80,"{} {}".format(self.class_names[det[-2]], round(det[-1],2)), color=(255, 0, 0, 255))  # 绘制类别和置信度
+                    
             else:
                 pl.osd_img.clear()
 
